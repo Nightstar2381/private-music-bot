@@ -11,7 +11,7 @@ module.exports = {
   }],
   run: async (client, interaction, manager) => {
     try {
-      const query = interaction.options.getString('query');
+      const query = interaction.options.getString('query');a
       console.log('▶️ /play used by:', interaction.user.username);
       console.log('🎵 Query:', query);
 
