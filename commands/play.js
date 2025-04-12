@@ -1,17 +1,18 @@
+const { SlashCommandBuilder } = require('discord.js');
 const { createNowPlayingEmbed } = require('../utils/embed');
 
 module.exports = {
-  name: 'play',
-  description: 'Play a song from YouTube or SoundCloud',
-  options: [{
-    name: 'query',
-    description: 'The name or URL of the song',
-    type: 3,
-    required: true,
-  }],
-  run: async (client, interaction, manager) => {
+  data: new SlashCommandBuilder()
+    .setName('play')
+    .setDescription('Play a song from YouTube or SoundCloud')
+    .addStringOption(option =>
+      option.setName('query')
+        .setDescription('The name or URL of the song')
+        .setRequired(true)
+    ),
+  async execute(interaction, client, manager) {
     try {
-      const query = interaction.options.getString('query');a
+      const query = interaction.options.getString('query');
       console.log('▶️ /play used by:', interaction.user.username);
       console.log('🎵 Query:', query);
 
