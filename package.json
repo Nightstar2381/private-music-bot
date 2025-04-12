@@ -8,6 +8,6 @@
   "dependencies": {
     "discord.js": "^14.11.0",
     "dotenv": "^16.3.1",
-    "erela.js": "^2.4.4"
+    "erela.js": "^2.3.3"
   }
 }
