@@ -20,7 +20,7 @@ client.commands = new Collection();
 // 📁 โหลดคำสั่งจากโฟลเดอร์ /commands
 fs.readdirSync("./commands").forEach(file => {
   const command = require(`./commands/${file}`);
-  client.commands.set(command.data.name, command);
+  client.commands.set(command.name, command); // ✅ เปลี่ยนจาก command.data.name เป็น command.name
 });
 
 // 🌐 เชื่อม Lavalink
@@ -30,7 +30,7 @@ client.manager = new Manager({
       host: process.env.LAVALINK_HOST,
       port: parseInt(process.env.LAVALINK_PORT),
       password: process.env.LAVALINK_PASSWORD,
-      secure: false, // ใช้ false ถ้า Render ไม่มี SSL (เช่น http://)
+      secure: false, // ❗️ต้องเป็น false ถ้าใช้ http
     },
   ],
   send: (id, payload) => {
@@ -46,7 +46,11 @@ client.once("ready", async () => {
 
   // สมัคร Slash Commands
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
-  const commands = client.commands.map(cmd => cmd.data.toJSON());
+  const commands = client.commands.map(cmd => ({
+    name: cmd.name,
+    description: cmd.description,
+    options: cmd.options || [],
+  }));
 
   try {
     await rest.put(
@@ -76,7 +80,7 @@ client.on("interactionCreate", async interaction => {
   if (!command) return;
 
   try {
-    await command.execute(interaction, client);
+    await command.run(client, interaction, client.manager); // ✅ เรียก .run และส่ง manager เข้าไป
   } catch (err) {
     console.error("❌ Command error:", err);
     await interaction.reply({ content: "เกิดข้อผิดพลาด!", ephemeral: true });
@@ -86,4 +90,5 @@ client.on("interactionCreate", async interaction => {
 // ให้ manager ทำงานกับ voice state
 client.on("raw", d => client.manager.updateVoiceState(d));
 
+// 🔑 ล็อกอินด้วย Token
 client.login(process.env.DISCORD_TOKEN);
