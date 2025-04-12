@@ -22,10 +22,6 @@ for (const file of commandFiles) {
   client.commands.set(command.name, command);
 }
 
-// โหลด utils หรือ embed
-const { REST } = require('@discordjs/rest');
-const { Routes } = require('discord-api-types/v10');
-
 // สร้าง Manager เชื่อม Lavalink
 const manager = new Manager({
   nodes: [
@@ -44,29 +40,42 @@ const manager = new Manager({
 
 client.manager = manager;
 
-// Event: เมื่อตัวบอทพร้อม
+// Event: เมื่อเชื่อม Lavalink สำเร็จ
+manager.on('nodeConnect', node => {
+  console.log(`✅ Lavalink node "${node.options.host}" connected.`);
+});
+
+manager.on('nodeError', (node, error) => {
+  console.error(`❌ Lavalink node error:`, error);
+});
+
+// เมื่อบอทพร้อม → ลงทะเบียน slash command
 client.once('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
-  // ลงทะเบียน Slash commands
-  const commands = client.commands.map(cmd => ({
+  const slashCommands = client.commands.map(cmd => ({
     name: cmd.name,
     description: cmd.description,
     options: cmd.options || [],
   }));
 
+  const { REST } = require('@discordjs/rest');
+  const { Routes } = require('discord-api-types/v10');
+
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+
   try {
-    await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID), {
-      body: commands
-    });
+    await rest.put(
+      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+      { body: slashCommands }
+    );
     console.log('✅ Slash commands deployed.');
-  } catch (error) {
-    console.error('❌ Failed to deploy commands:', error);
+  } catch (err) {
+    console.error('❌ Failed to register commands:', err);
   }
 });
 
-// Event: interaction
+// interaction
 client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -77,21 +86,20 @@ client.on(Events.InteractionCreate, async interaction => {
     await command.run(client, interaction, manager);
   } catch (error) {
     console.error(`❌ Error in /${interaction.commandName}:`, error);
-    await interaction.reply({ content: '❌ เกิดข้อผิดพลาดในการประมวลผลคำสั่ง', ephemeral: true });
+    if (!interaction.replied) {
+      await interaction.reply({
+        content: '❌ เกิดข้อผิดพลาดในการประมวลผลคำสั่ง',
+        ephemeral: true,
+      });
+    }
   }
 });
 
-// Event: raw → ให้ Lavalink sync voice state
+// สำคัญมาก: ให้ erela รับ voice update
 client.on('raw', d => manager.updateVoiceState(d));
 
-// Event: เมื่อเชื่อม Lavalink สำเร็จ
-manager.on('nodeConnect', node => {
-  console.log(`✅ Lavalink node "${node.options.host}" connected.`);
-});
-
-manager.on('nodeError', (node, error) => {
-  console.error(`❌ Lavalink node error:`, error);
-});
-
-// เริ่มรันบอท
-client.login(process.env.DISCORD_TOKEN);
+// ✅ เริ่มบอท + init manager
+client.login(process.env.DISCORD_TOKEN)
+  .then(() => {
+    client.manager.init(client.user.id);
+  });
