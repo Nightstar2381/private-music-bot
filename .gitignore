@@ -1,39 +1,11 @@
-# 👉 Node.js modules
+# Node modules and environment config
 node_modules/
-
-# 👉 Env config ที่ห้ามหลุด
 .env
-.env.local
-.env.production
-.env.development
 
-# 👉 Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+# System files
+.DS_Store
 *.log
 
-# 👉 MacOS / Windows system files
-.DS_Store
-Thumbs.db
-
-# 👉 VS Code / IDE settings
-.vscode/
-.idea/
-*.sw?
-
-# 👉 Build output (ถ้ามี)
+# Output/Build files
 dist/
 build/
-
-# 👉 OS temp files
-*.swp
-*.swo
-
-# 👉 Lavalink jar (ถ้าดาวน์โหลดมาเอง)
-Lavalink.jar
-*.jar
-
-# 👉 GitHub special
-.git-credentials
