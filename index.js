@@ -1,7 +1,10 @@
-require('dotenv').config();
-const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
-const { Manager } = require('erela.js');
+require("dotenv").config();
+const { Client, GatewayIntentBits, Partials, Collection } = require("discord.js");
+const { Manager } = require("erela.js");
+const fs = require("fs");
+const { REST, Routes } = require("discord.js");
 
+// 🔧 สร้าง Client Discord
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -9,35 +12,64 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
   ],
-  partials: [Partials.Channel]
+  partials: [Partials.Channel],
 });
 
 client.commands = new Collection();
-client.once('ready', () => {
-  console.log(`✅ Logged in as ${client.user.tag}`);
-  client.manager.init(client.user.id);
+
+// 📁 โหลดคำสั่งจากโฟลเดอร์ /commands
+fs.readdirSync("./commands").forEach(file => {
+  const command = require(`./commands/${file}`);
+  client.commands.set(command.data.name, command);
 });
 
-// 📡 Lavalink Manager
+// 🌐 เชื่อม Lavalink
 client.manager = new Manager({
   nodes: [
     {
       host: process.env.LAVALINK_HOST,
-      port: Number(process.env.LAVALINK_PORT),
+      port: parseInt(process.env.LAVALINK_PORT),
       password: process.env.LAVALINK_PASSWORD,
-      secure: true // ✅ สำคัญมากสำหรับ Render
+      secure: false, // ใช้ false ถ้า Render ไม่มี SSL (เช่น http://)
     },
   ],
-  send(id, payload) {
+  send: (id, payload) => {
     const guild = client.guilds.cache.get(id);
     if (guild) guild.shard.send(payload);
-  }
-})
-.on('nodeConnect', node => console.log(`✅ Lavalink node "${node.options.host}" connected.`))
-.on('nodeError', (node, error) => console.error(`❌ Lavalink error: ${error.message}`));
+  },
+});
 
-// 📥 รับ interaction
-client.on('interactionCreate', async interaction => {
+// 🎧 เมื่อบอทพร้อม
+client.once("ready", async () => {
+  console.log(`🎵 Logged in as ${client.user.tag}`);
+  client.manager.init(client.user.id);
+
+  // สมัคร Slash Commands
+  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+  const commands = client.commands.map(cmd => cmd.data.toJSON());
+
+  try {
+    await rest.put(
+      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+      { body: commands }
+    );
+    console.log("✅ Slash commands deployed.");
+  } catch (err) {
+    console.error("❌ Error deploying commands:", err);
+  }
+});
+
+// 🎧 Event เชื่อม Lavalink สำเร็จ
+client.manager.on("nodeConnect", node =>
+  console.log(`✅ Lavalink node "${node.options.host}" connected.`)
+);
+
+client.manager.on("nodeError", (node, error) =>
+  console.error(`❌ Lavalink error on ${node.options.host}:`, error)
+);
+
+// รับ interaction และใช้คำสั่ง
+client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
   const command = client.commands.get(interaction.commandName);
@@ -45,13 +77,13 @@ client.on('interactionCreate', async interaction => {
 
   try {
     await command.execute(interaction, client);
-  } catch (error) {
-    console.error(error);
-    await interaction.reply({ content: 'เกิดข้อผิดพลาดในการทำงานของคำสั่ง!', ephemeral: true });
+  } catch (err) {
+    console.error("❌ Command error:", err);
+    await interaction.reply({ content: "เกิดข้อผิดพลาด!", ephemeral: true });
   }
 });
 
-// 🎶 Voice update สำหรับ erela.js
-client.on('raw', d => client.manager.updateVoiceState(d));
+// ให้ manager ทำงานกับ voice state
+client.on("raw", d => client.manager.updateVoiceState(d));
 
 client.login(process.env.DISCORD_TOKEN);
