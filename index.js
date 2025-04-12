@@ -23,14 +23,14 @@ for (const file of commandFiles) {
   client.commands.set(command.name, command);
 }
 
-// สร้าง Lavalink Manager (Render ใช้ HTTP, port 80, secure: false)
+// ✅ แก้ตรงนี้: secure: true สำหรับ HTTPS
 const manager = new Manager({
   nodes: [
     {
-      host: process.env.LAVALINK_HOST,       // lavalink-private.onrender.com
-      port: Number(process.env.LAVALINK_PORT), // 80
-      password: process.env.LAVALINK_PASSWORD, // รหัสผ่าน
-      secure: false, // ✅ สำคัญมาก! Render ใช้ HTTP เท่านั้น
+      host: 'lavalink-private.onrender.com',
+      port: 443,
+      password: process.env.LAVALINK_PASSWORD,
+      secure: true, // ใช้ HTTPS
     }
   ],
   send: (id, payload) => {
@@ -41,7 +41,6 @@ const manager = new Manager({
 
 client.manager = manager;
 
-// ✅ เชื่อม Lavalink แล้วแสดงสถานะ
 manager.on('nodeConnect', node => {
   console.log(`✅ Lavalink node "${node.options.host}" connected.`);
 });
@@ -49,7 +48,7 @@ manager.on('nodeError', (node, error) => {
   console.error(`❌ Lavalink node error: ${error.message}`);
 });
 
-// ลงทะเบียน Slash Command
+// Slash Command
 client.once('ready', async () => {
   console.log(`🎵 Logged in as ${client.user.tag}`);
 
@@ -74,7 +73,6 @@ client.once('ready', async () => {
   }
 });
 
-// รองรับ interaction command
 client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
   const command = client.commands.get(interaction.commandName);
@@ -93,10 +91,7 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 });
 
-// อัปเดต voice state
 client.on('raw', d => client.manager.updateVoiceState(d));
-
-// ✅ เริ่มเชื่อมบอท + Lavalink
 client.login(process.env.DISCORD_TOKEN).then(() => {
   client.manager.init(client.user.id);
 });
